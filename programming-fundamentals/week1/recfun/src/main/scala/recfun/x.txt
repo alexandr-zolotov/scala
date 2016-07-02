@@ -1,0 +1,56 @@
+  money: 4 . Coins: List(2, 1)
+    money: 4 . Coins: List(1)
+      money: 4 . Coins: List()
+      0 Returning 0
+    CurrentMoneySmallerCoins 0
+      money: 3 . Coins: List(1)
+        money: 3 . Coins: List()
+        0 Returning 0
+      CurrentMoneySmallerCoins 0
+        money: 2 . Coins: List(1)
+          money: 2 . Coins: List()
+          0 Returning 0
+        CurrentMoneySmallerCoins 0
+          money: 1 . Coins: List(1)
+            money: 1 . Coins: List()
+            0 Returning 0
+          CurrentMoneySmallerCoins 0
+          2 Returning 1
+          money: 1 . Coins: List()
+          0 Returning 0
+        3 Returning 0
+        money: 1 . Coins: List()
+        0 Returning 0
+      3 Returning 0
+      money: 1 . Coins: List()
+      0 Returning 0
+    3 Returning 0
+  CurrentMoneySmallerCoins 1
+    money: 2 . Coins: List(2, 1)
+      money: 2 . Coins: List(1)
+        money: 2 . Coins: List()
+        0 Returning 0
+      CurrentMoneySmallerCoins 0
+        money: 1 . Coins: List(1)
+          money: 1 . Coins: List()
+          0 Returning 0
+        CurrentMoneySmallerCoins 0
+        2 Returning 1
+        money: 1 . Coins: List()
+        0 Returning 0
+      3 Returning 0
+    CurrentMoneySmallerCoins 1
+    2 Returning 2
+    money: 2 . Coins: List(1)
+      money: 2 . Coins: List()
+      0 Returning 0
+    CurrentMoneySmallerCoins 0
+      money: 1 . Coins: List(1)
+        money: 1 . Coins: List()
+        0 Returning 0
+      CurrentMoneySmallerCoins 0
+      2 Returning 1
+      money: 1 . Coins: List()
+      0 Returning 0
+    3 Returning 0
+  4 Returning 5
