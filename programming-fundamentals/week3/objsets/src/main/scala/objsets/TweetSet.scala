@@ -1,7 +1,5 @@
 package objsets
 
-import TweetReader._
-
 /**
   * A class to represent tweets.
   */
@@ -113,6 +111,8 @@ abstract class TweetSet {
   def left: TweetSet
 
   def right: TweetSet
+
+  def toList: TweetList
 }
 
 class Empty extends TweetSet {
@@ -122,6 +122,8 @@ class Empty extends TweetSet {
   def right = new Empty
 
   def left = new Empty
+
+  def toList = Nil
 
   override def union(that: TweetSet) = that
 
@@ -146,6 +148,32 @@ class NonEmpty(val elem: Tweet, val left: TweetSet, val right: TweetSet) extends
 
   def isEmpty = false
 
+  def toList = {//todo test
+
+    def toList(tweetSet: TweetSet): TweetList = {
+
+      /**
+        * list from root and right subtree
+        */
+      def buildRightList(tweetSet: TweetSet) : TweetList = {
+        if(tweetSet.isEmpty) Nil
+        else new Cons(tweetSet.elem, tweetSet.right.toList)
+      }
+
+      def buildLeftList(tweetSet: TweetSet): TweetList = {
+        if(tweetSet.isEmpty) Nil
+        else tweetSet.toList
+      }
+
+      val rightList = buildRightList(tweetSet)
+      val leftList = buildLeftList(tweetSet.left)
+
+      leftList.concat(rightList)
+    }
+
+    toList(this)
+  }
+
   def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = {
     val result = this.left.filterAcc(p, acc).union(this.right.filterAcc(p, acc))
     if (p(this.elem)) result.incl(this.elem)
@@ -161,7 +189,6 @@ class NonEmpty(val elem: Tweet, val left: TweetSet, val right: TweetSet) extends
 
     union(this, that)
   }
-
 
   /**
     * The following methods are already implemented
