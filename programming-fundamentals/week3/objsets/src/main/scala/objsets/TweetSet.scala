@@ -7,6 +7,11 @@ class Tweet(val user: String, val text: String, val retweets: Int) {
   override def toString: String =
     "User: " + user + "\n" +
       "Text: " + text + " [" + retweets + "]"
+
+  //todo test
+  def comparing(comparator: (Tweet, Tweet) => Boolean)(that: Tweet): Boolean =
+    comparator(this, that)
+
 }
 
 /**
@@ -63,7 +68,7 @@ abstract class TweetSet {
     * Question: Should we implment this method here, or should it remain abstract
     * and be implemented in the subclasses?
     */
-  def mostRetweeted: Tweet = ???
+  def mostRetweeted: Tweet
 
   /**
     * Returns a list containing all tweets of this set, sorted by retweet count
@@ -74,7 +79,7 @@ abstract class TweetSet {
     * Question: Should we implment this method here, or should it remain abstract
     * and be implemented in the subclasses?
     */
-  def descendingByRetweet: TweetList = ???
+  def descendingByRetweet: TweetList
 
   /**
     * The following methods are already implemented
@@ -117,6 +122,8 @@ abstract class TweetSet {
 
 class Empty extends TweetSet {
 
+  def mostRetweeted = throw new NoSuchElementException("Empty.mostRetweeted")
+
   def elem = throw new NoSuchElementException("Empty.elem")
 
   def right = new Empty
@@ -125,7 +132,9 @@ class Empty extends TweetSet {
 
   def toList = Nil
 
-  override def union(that: TweetSet) = that
+  def descendingByRetweet = Nil
+
+  def union(that: TweetSet) = that
 
   def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = new Empty
 
@@ -146,29 +155,51 @@ class Empty extends TweetSet {
 
 class NonEmpty(val elem: Tweet, val left: TweetSet, val right: TweetSet) extends TweetSet {
 
+  //todo test
+  def mostRetweeted = {
+
+    def mostRetweeted(tweet: Tweet, ts: TweetSet): Tweet = {
+      if (ts.isEmpty) tweet
+      else {
+        if (ts.elem.retweets > tweet.retweets) mostRetweeted(mostRetweeted(ts.elem, ts.right), ts.left)
+        else mostRetweeted(mostRetweeted(tweet, ts.right), ts.left)
+      }
+    }
+
+    mostRetweeted(this.elem, this)
+  }
+
+  //todo test
+  def descendingByRetweet = {
+
+    def build(tweetSet: TweetSet, tweetList: TweetList): TweetList = {
+      if (tweetSet.isEmpty) Nil
+      else {
+        val next = tweetSet.mostRetweeted
+        val reducedSet = tweetSet.remove(next)
+
+        new Cons(next, reducedSet.descendingByRetweet)
+      }
+    }
+
+    build(this, Nil)
+  }
+
   def isEmpty = false
 
-  def toList = {//todo test
+  //todo test
+  def toList = {
 
     def toList(tweetSet: TweetSet): TweetList = {
-
-      /**
-        * list from root and right subtree
-        */
-      def buildRightList(tweetSet: TweetSet) : TweetList = {
-        if(tweetSet.isEmpty) Nil
-        else new Cons(tweetSet.elem, tweetSet.right.toList)
-      }
-
-      def buildLeftList(tweetSet: TweetSet): TweetList = {
-        if(tweetSet.isEmpty) Nil
+      def listOrNil(tweetSet: TweetSet): TweetList = {
+        if (tweetSet.isEmpty) Nil
         else tweetSet.toList
       }
 
-      val rightList = buildRightList(tweetSet)
-      val leftList = buildLeftList(tweetSet.left)
+      val rightList = listOrNil(tweetSet.right)
+      val leftList = listOrNil(tweetSet.left)
 
-      leftList.concat(rightList)
+      leftList.concat(new Cons(tweetSet.elem, rightList))
     }
 
     toList(this)
