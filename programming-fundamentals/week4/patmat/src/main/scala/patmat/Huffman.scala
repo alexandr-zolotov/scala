@@ -180,14 +180,20 @@ object Huffman {
     */
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
 
-    def collectChars(tree: CodeTree, bits: List[Bit], chars: List[Char]): List[Char] = tree match {
-      case Leaf(char, weight) => chars:+char
+    def collectChars(root: CodeTree, subTree: CodeTree, bits: List[Bit], chars: List[Char]): List[Char] = subTree match {
+      case Leaf(char, weight) => {
+        if (bits.isEmpty) chars:+char
+        else collectChars(root, root, bits.tail, chars:+char)
+      }
       case Fork(left,right,c,w) =>
-        if(bits.head == 0) collectChars(right, bits.tail, chars)
-        else collectChars(left, bits.tail, chars)
+        if(bits.isEmpty) chars
+        else {
+          if (bits.head == 0) collectChars(root, right, bits.tail, chars)
+          else collectChars(root, left, bits.tail, chars)
+        }
     }
 
-    collectChars(tree, bits, List())
+    collectChars(tree, tree, bits, List())
   }
 
   /**
