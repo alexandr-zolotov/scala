@@ -187,7 +187,7 @@ object Huffman {
       case Fork(left,right,c,w) =>
         if(bits.isEmpty) chars
         else {
-          if (bits.head == 0) collectChars(root, right, bits.tail, chars)
+          if (bits.head == 1) collectChars(root, right, bits.tail, chars)
           else collectChars(root, left, bits.tail, chars)
         }
     }
@@ -227,8 +227,8 @@ object Huffman {
     def encodeCharacter(char: Char, codeTree: CodeTree, bits: List[Bit]): List[Bit] = codeTree match {
       case Leaf(c,w) => bits
       case Fork(l,r,c,w) =>
-        if(chars(r).contains(char)) encodeCharacter(char, r, bits:+0)
-        else encodeCharacter(char, l, bits:+1)
+        if(chars(r).contains(char)) encodeCharacter(char, r, bits:+1)
+        else encodeCharacter(char, l, bits:+0)
     }
 
     text.map(char => encodeCharacter(char, tree, List())).reduce((code1, code2) => code1:::code2)
@@ -261,7 +261,7 @@ object Huffman {
 
     def collectEntries(subtree: CodeTree, bits: List[Bit]): CodeTable = subtree match {
       case Leaf(c,w) => List((c, bits))
-      case Fork(l,r,c,w) => mergeCodeTables(collectEntries(l, bits:+1), collectEntries(r, bits:+0))
+      case Fork(l,r,c,w) => mergeCodeTables(collectEntries(l, bits:+0), collectEntries(r, bits:+1))
     }
 
     collectEntries(tree, List())
