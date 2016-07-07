@@ -103,7 +103,7 @@ object Anagrams {
       if (leftCharsLists.isEmpty) acc
       else {
         val charOccurrences: Occurrences = leftCharsLists.head
-        generateSubsets(leftCharsLists.tail, acc:::mutate(charOccurrences, acc))
+        generateSubsets(leftCharsLists.tail, acc ::: mutate(charOccurrences, acc))
       }
     }
 
@@ -124,7 +124,17 @@ object Anagrams {
     * Note: the resulting value is an occurrence - meaning it is sorted
     * and has no zero-entries.
     */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = {
+
+    if (!combinations(x).toSet.contains(y)) throw new IllegalArgumentException("y is not subset of x")
+    else {
+      val charsConcerned = y.map(_._1)
+      val updatedValues: Occurrences = x.filter(pair => charsConcerned.contains(pair._1)).sortBy(_._1).zip(y.sortBy(_._1)).map(tuple => (tuple._1._1, tuple._1._2 - tuple._2._2))
+
+      val sortedX: List[(Char, Int)] = x.sortBy(_._1)
+      sortedX.takeWhile(_._1 < updatedValues.head._1) ::: updatedValues ::: sortedX.dropWhile(_._1 <= updatedValues.last._1)
+    }
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
     *
