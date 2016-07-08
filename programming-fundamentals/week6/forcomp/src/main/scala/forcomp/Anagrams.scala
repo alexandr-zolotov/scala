@@ -43,7 +43,7 @@ object Anagrams {
 
   /** Converts a sentence into its character occurrence list. */
   def sentenceOccurrences(s: Sentence): Occurrences =
-    s.flatMap(wordOccurrences)
+    s.flatMap(wordOccurrences).groupBy(pair => pair._1.toLower).values.map(list => (list.head._1, list.head._2)).toList.sorted
 
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
@@ -125,14 +125,17 @@ object Anagrams {
     * and has no zero-entries.
     */
   def subtract(x: Occurrences, y: Occurrences): Occurrences = {
-
-    if (!combinations(x).toSet.contains(y)) throw new IllegalArgumentException("y is not subset of x")
+    if (y.isEmpty) x
     else {
-      val charsConcerned = y.map(_._1)
-      val updatedValues: Occurrences = x.filter(pair => charsConcerned.contains(pair._1)).sortBy(_._1).zip(y.sortBy(_._1)).map(tuple => (tuple._1._1, tuple._1._2 - tuple._2._2))
+      if (!combinations(x).exists(it => it.toSet == y.toSet))
+        throw new IllegalArgumentException("y is not subset of x")
+      else {
+        val charsConcerned = y.map(_._1)
+        val updatedValues: Occurrences = x.filter(pair => charsConcerned.contains(pair._1)).sortBy(_._1).zip(y.sortBy(_._1)).map(tuple => (tuple._1._1, tuple._1._2 - tuple._2._2))
 
-      val sortedX: List[(Char, Int)] = x.sortBy(_._1)
-      sortedX.takeWhile(_._1 < updatedValues.head._1) ::: updatedValues ::: sortedX.dropWhile(_._1 <= updatedValues.last._1)
+        val sortedX: List[(Char, Int)] = x.sortBy(_._1)
+        (sortedX.takeWhile(_._1 < updatedValues.head._1) ::: updatedValues ::: sortedX.dropWhile(_._1 <= updatedValues.last._1)).filter(_._2 > 0)
+      }
     }
   }
 
@@ -178,12 +181,29 @@ object Anagrams {
     */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
 
-    val occurrences: Occurrences = sentenceOccurrences(sentence)
-    val maybeWords: Option[List[Word]] = dictionaryByOccurrences.get(occurrences)
+    def advance(words: Map[Occurrences, List[Word]], maxOccurrences: Occurrences, sentences: List[Sentence]): List[Sentence] = {
+      //generate new sentences
+      val newSentences: List[Sentence] = for (sentence <- sentences) yield {
+        val remainingSentenceOccurrences: Occurrences = subtract(maxOccurrences, sentenceOccurrences(sentence))
+        val candidates: Map[Occurrences, List[Word]] = words.filterKeys(key => combinations(remainingSentenceOccurrences).exists(combo => combo.toSet == key.toSet))
 
+        candidates.values.flatten.toList.flatMap(sentence :+ _)
+      }
+      //if no new sentences where generated return all having same Occurrences as input
+      if (!newSentences.exists(_ != Nil)) sentences.filter(sentenceOccurrences(_) == maxOccurrences)
+      else advance(words, maxOccurrences, newSentences.filter(sentence => sentence != Nil))
+    }
 
+    def collectAnagrams(sentence: Sentence, dictionary: Map[Occurrences, List[Word]]): List[Sentence] = {
+      val occurrences: Occurrences = sentenceOccurrences(sentence)
+      if(occurrences.isEmpty) List(Nil)
+      else {
+        val occurrencesSubsets = combinations(occurrences).map(occList => occList.toSet)
+        val oneWordSentences: List[Sentence] = dictionary.values.flatten.toList.filter(value => occurrencesSubsets.contains(wordOccurrences(value).toSet)).map(List(_))
+        advance(dictionary, occurrences, oneWordSentences)
+      }
+    }
 
-
-    //todo implement
+    collectAnagrams(sentence, dictionaryByOccurrences)
   }
 }
