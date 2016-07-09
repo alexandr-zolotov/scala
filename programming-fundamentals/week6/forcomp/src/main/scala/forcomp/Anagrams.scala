@@ -43,7 +43,7 @@ object Anagrams {
 
   /** Converts a sentence into its character occurrence list. */
   def sentenceOccurrences(s: Sentence): Occurrences =
-    s.flatMap(wordOccurrences).groupBy(pair => pair._1.toLower).values.map(list => (list.head._1, list.head._2)).toList.sorted
+    s.flatMap(wordOccurrences).groupBy(pair => pair._1.toLower).mapValues(list => list.map(_._2).sum).toList.sorted
 
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
@@ -183,20 +183,23 @@ object Anagrams {
 
     def advance(words: Map[Occurrences, List[Word]], maxOccurrences: Occurrences, sentences: List[Sentence]): List[Sentence] = {
       //generate new sentences
-      val newSentences: List[Sentence] = for (sentence <- sentences) yield {
+      val newSentences: List[List[Sentence]] = for (sentence <- sentences) yield {
         val remainingSentenceOccurrences: Occurrences = subtract(maxOccurrences, sentenceOccurrences(sentence))
-        val candidates: Map[Occurrences, List[Word]] = words.filterKeys(key => combinations(remainingSentenceOccurrences).exists(combo => combo.toSet == key.toSet))
+        val remainingCombinations = combinations(remainingSentenceOccurrences)
+        val candidates: Map[Occurrences, List[Word]] = words.filterKeys(key => remainingCombinations.exists(combo => combo.toSet == key.toSet))
 
-        candidates.values.flatten.toList.flatMap(sentence :+ _)
+        val set: Set[Word] = candidates.values.flatten.toSet
+        if (candidates.isEmpty) List(sentence)
+        else set.toList.map(it => it :: sentence)
       }
       //if no new sentences where generated return all having same Occurrences as input
-      if (!newSentences.exists(_ != Nil)) sentences.filter(sentenceOccurrences(_) == maxOccurrences)
-      else advance(words, maxOccurrences, newSentences.filter(sentence => sentence != Nil))
+      if (newSentences.flatten.toSet == sentences.toSet) sentences.filter(sentenceOccurrences(_) == maxOccurrences)
+      else advance(words, maxOccurrences, newSentences.flatten.filter(sentence => sentence != Nil))
     }
 
     def collectAnagrams(sentence: Sentence, dictionary: Map[Occurrences, List[Word]]): List[Sentence] = {
       val occurrences: Occurrences = sentenceOccurrences(sentence)
-      if(occurrences.isEmpty) List(Nil)
+      if (occurrences.isEmpty) List(Nil)
       else {
         val occurrencesSubsets = combinations(occurrences).map(occList => occList.toSet)
         val oneWordSentences: List[Sentence] = dictionary.values.flatten.toList.filter(value => occurrencesSubsets.contains(wordOccurrences(value).toSet)).map(List(_))
