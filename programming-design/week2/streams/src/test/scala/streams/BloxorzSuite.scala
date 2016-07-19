@@ -52,6 +52,23 @@ class BloxorzSuite extends FunSuite {
     }
   }
 
+  test("neighboursWithHistory") {
+    new Level1 {
+      assert(neighborsWithHistory(startBlock, List(Left, Up)) ===
+        List(
+          (Block(Pos(1,2),Pos(1,3)),List(Right, Left, Up)),
+          (Block(Pos(2,1),Pos(3,1)),List(Down, Left, Up)))
+          .toStream)
+    }
+  }
+
+  test("newNeighboursOnly") {
+    new Level1 {
+      val history = neighborsWithHistory(startBlock, List())
+      assert(newNeighborsOnly(history, Set(Block(Pos(1,2),Pos(1,3)))) === Stream((Block(Pos(2,1),Pos(3,1)), List(Down))))
+    }
+  }
+
 	test("terrain function level 1") {
     new Level1 {
       assert(terrain(Pos(0,0)), "0,0")
