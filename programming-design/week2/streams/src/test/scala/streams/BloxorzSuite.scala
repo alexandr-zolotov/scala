@@ -69,6 +69,15 @@ class BloxorzSuite extends FunSuite {
     }
   }
 
+  test("from"){
+    new Level1 {
+      assert(
+        from((Block(Pos(1,2),Pos(1,3)), List(Right)) #:: Stream.empty, Set(startBlock)).take(2).toList ===
+          List((Block(Pos(1,4),Pos(1,4)),List(Right, Right)), (Block(Pos(2,2),Pos(2,3)),List(Down, Right)))
+      )
+    }
+  }
+
 	test("terrain function level 1") {
     new Level1 {
       assert(terrain(Pos(0,0)), "0,0")

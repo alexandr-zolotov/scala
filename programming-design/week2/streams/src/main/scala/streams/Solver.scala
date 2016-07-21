@@ -67,22 +67,22 @@ trait Solver extends GameDef {
    */
   def from(initial: Stream[(Block, List[Move])],
            explored: Set[Block]): Stream[(Block, List[Move])] = {
-
-    //find possible moves
-    //fixme result should be sorted
     initial.map(pair => neighborsWithHistory(pair._1, pair._2)).flatMap(stream => newNeighborsOnly(stream, explored))
   }
 
   /**
    * The stream of all paths that begin at the starting block.
    */
-  lazy val pathsFromStart: Stream[(Block, List[Move])] = ???
+  lazy val pathsFromStart: Stream[(Block, List[Move])] =
+    from((startBlock, List()) #:: Stream.empty, Set(startBlock))//todo use recursion here
 
   /**
    * Returns a stream of all possible pairs of the goal block along
    * with the history how it was reached.
    */
-  lazy val pathsToGoal: Stream[(Block, List[Move])] = ???
+  lazy val pathsToGoal: Stream[(Block, List[Move])] = {
+    pathsFromStart.filter(pair => pair._1.isStanding && pair._1.b1.equals(goal))
+  }
 
   /**
    * The (or one of the) shortest sequence(s) of moves to reach the
@@ -92,5 +92,8 @@ trait Solver extends GameDef {
    * the first move that the player should perform from the starting
    * position.
    */
-  lazy val solution: List[Move] = ???
+  lazy val solution: List[Move] = {
+    if(pathsToGoal.isEmpty) List()
+    else pathsToGoal.head._2.reverse
+  }
 }
