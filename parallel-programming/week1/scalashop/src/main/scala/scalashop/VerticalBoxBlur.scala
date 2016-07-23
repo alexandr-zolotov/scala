@@ -3,6 +3,8 @@ package scalashop
 import org.scalameter._
 import common._
 
+import scala.collection.parallel.Task
+
 object VerticalBoxBlurRunner {
 
   val standardConfig = config(
@@ -61,8 +63,18 @@ object VerticalBoxBlur {
    *  columns.
    */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
-    // TODO implement using the `task` construct and the `blur` method
-    ???
-  }
 
+    def task(from: Int, end: Int, tasksNumber: Int): Unit = {
+
+      if (tasksNumber == 1 || end - from < 2) blur(src, dst, from, end, radius)
+      else {
+        val mid = (end - from) / 2
+        val numTasks1 = tasksNumber / 2
+        val numTasks2 = tasksNumber - numTasks1
+        parallel(task(from, mid, numTasks1), task(mid, end, numTasks2))
+      }
+    }
+
+    task(0, src.width, numTasks)
+  }
 }
