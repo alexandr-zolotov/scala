@@ -43,24 +43,26 @@ package object scalashop {
     if (radius == 0) src.apply(x, y)
     else {
 
-      var xn = clamp(x - radius, 0, src.width)
-
-      var r,g,b,a = 0
+      var r, g, b, a = 0
       var count = 0
-      while (xn < src.width) {
-        var yn = clamp(y - radius, 0, src.height)
-        while (yn < src.height) {
-          if (!(xn == x && yn == y)) {
-            val pixel = src.apply(xn, yn)
-            r += red(pixel)
-            g += green(pixel)
-            b += blue(pixel)
-            a += alpha(pixel)
-            count += 1
-          }
-          yn += 1
+
+      val maxX = clamp(x + radius, 0, src.width - 1)
+      var px = clamp(x - radius, 0, maxX)
+
+      while (px <= maxX) {
+        val maxY = clamp(y + radius, 0, src.height - 1)
+        var py = clamp(y - radius, 0, maxY)
+
+        while (py <= maxY) {
+          val pixel = src.apply(px, py)
+          r += red(pixel)
+          g += green(pixel)
+          b += blue(pixel)
+          a += alpha(pixel)
+          count += 1
+          py += 1
         }
-        xn += 1
+        px += 1
       }
 
       val result = rgba(r / count, g / count, b / count, a / count)
