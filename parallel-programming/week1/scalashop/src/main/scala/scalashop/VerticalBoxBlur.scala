@@ -67,14 +67,12 @@ object VerticalBoxBlur {
 
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
 
-    val step = src.width / numTasks
-
-    val maxX = src.width - 1
-    val sequence = Range(0, maxX, step)
+    val step = src.width / math.min(src.width, numTasks)
+    val sequence = Range(0, src.width, step)
 
     val tasks = for {
       start <- sequence
-    } yield task(blur(src, dst, start, math.min(start + step, maxX), radius))
+    } yield task(blur(src, dst, start, math.min(start + step, src.width), radius))
 
     tasks.foreach(_.join())
   }
