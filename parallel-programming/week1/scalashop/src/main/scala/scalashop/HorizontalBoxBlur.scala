@@ -62,18 +62,17 @@ object HorizontalBoxBlur {
    */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
 
-    def task(from: Int, end: Int, tasksNumber: Int): Unit = {
 
-      if (tasksNumber == 1 || end - from < 2) blur(src, dst, from, end, radius)
-      else {
-        val mid = (end - from) / 2
-        val numTasks1 = tasksNumber / 2
-        val numTasks2 = tasksNumber - numTasks1
-        parallel(task(from, mid, numTasks1), task(mid, end, numTasks2))
-      }
-    }
+    val step = src.height / numTasks
 
-    task(0, src.height, numTasks)
+    val maxY = src.height - 1
+    val sequence = Range(0, maxY, step)
+
+    val tasks = for {
+      start <- sequence
+    } yield task(blur(src, dst, start, math.min(start + step, maxY), radius))
+
+    tasks.foreach(_.join())
   }
 
 }

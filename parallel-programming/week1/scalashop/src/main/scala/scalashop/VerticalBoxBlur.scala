@@ -1,5 +1,7 @@
 package scalashop
 
+import java.util.concurrent.ForkJoinTask
+
 import org.scalameter._
 import common._
 
@@ -62,19 +64,18 @@ object VerticalBoxBlur {
    *  `numTasks` separate strips, where each strip is composed of some number of
    *  columns.
    */
+
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
 
-    def task(from: Int, end: Int, tasksNumber: Int): Unit = {
+    val step = src.width / numTasks
 
-      if (tasksNumber == 1 || end - from < 2) blur(src, dst, from, end, radius)
-      else {
-        val mid = (end - from) / 2
-        val numTasks1 = tasksNumber / 2
-        val numTasks2 = tasksNumber - numTasks1
-        parallel(task(from, mid, numTasks1), task(mid, end, numTasks2))
-      }
-    }
+    val maxX = src.width - 1
+    val sequence = Range(0, maxX, step)
 
-    task(0, src.width, numTasks)
+    val tasks = for {
+      start <- sequence
+    } yield task(blur(src, dst, start, math.min(start + step, maxX), radius))
+
+    tasks.foreach(_.join())
   }
 }
