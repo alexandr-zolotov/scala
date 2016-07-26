@@ -17,7 +17,7 @@ object ParallelCountChangeRunner {
   ) withWarmer(new Warmer.Default)
 
   def main(args: Array[String]): Unit = {
-    val amount = 250
+    val amount = 20
     val coins = List(1, 2, 5, 10, 20, 50)
     val seqtime = standardConfig measure {
       seqResult = ParallelCountChange.countChange(amount, coins)
@@ -48,22 +48,21 @@ object ParallelCountChange {
   def countChange(money: Int, coins: List[Int]): Int = {
 
     val sortedCoins = coins.sorted
-
-    def count(money: Int, sortedCoins: List[Int]): Int = {
-      if (money == 0) 1
-      else if (sortedCoins.isEmpty || sortedCoins.head > money) 0
-      else {
-        //get next coin
-        val coin: Int = sortedCoins.head
-        val currentMoneyBiggerCoins: Int = count(money, sortedCoins.tail)
-        val currentMoneyReducedCurrentCoin = count(money - coin, sortedCoins)
-
-        if (sortedCoins.tail.isEmpty) currentMoneyReducedCurrentCoin
-        else currentMoneyReducedCurrentCoin + currentMoneyBiggerCoins
-      }
-    }
-
     count(money, sortedCoins)
+  }
+
+  def count(money: Int, sortedCoins: List[Int]): Int = {
+    if (money == 0) 1
+    else if (sortedCoins.isEmpty || sortedCoins.head > money) 0
+    else {
+      //get next coin
+      val coin: Int = sortedCoins.head
+      val currentMoneyBiggerCoins: Int = count(money, sortedCoins.tail)
+      val currentMoneyReducedCurrentCoin = count(money - coin, sortedCoins)
+
+      if (sortedCoins.tail.isEmpty) currentMoneyReducedCurrentCoin
+      else currentMoneyReducedCurrentCoin + currentMoneyBiggerCoins
+    }
   }
 
   type Threshold = (Int, List[Int]) => Boolean
@@ -74,24 +73,25 @@ object ParallelCountChange {
   def parCountChange(money: Int, coins: List[Int], threshold: Threshold): Int = {
     val sortedCoins = coins.sorted
 
-    def count(money: Int, sortedCoins: List[Int]): Int = {
+    def countParallel(leftMoney: Int, sortedCoins: List[Int]): Int = {
 
-      if (threshold.apply(money, sortedCoins)) countChange(money, coins)
+      if (threshold(leftMoney, sortedCoins)) count(leftMoney, sortedCoins)
+      else if (sortedCoins.isEmpty) 0
       else {
         val coin: Int = sortedCoins.head
         val (currentMoneyBiggerCoins, currentMoneyReducedCurrentCoin) =
-          parallel(count(money, sortedCoins.tail), count(money - coin, sortedCoins))
+          parallel(countParallel(leftMoney, sortedCoins.tail), countParallel(leftMoney - coin, sortedCoins))
 
         if (sortedCoins.tail.isEmpty) currentMoneyReducedCurrentCoin
         else currentMoneyReducedCurrentCoin + currentMoneyBiggerCoins
       }
     }
-    count(money, sortedCoins)
+    countParallel(money, sortedCoins)
   }
 
   /** Threshold heuristic based on the starting money. */
   def moneyThreshold(startingMoney: Int): Threshold =
-    ???
+    (money: Int, coins: List[Int]) => money < ((startingMoney * 2) / 3)
 
   /** Threshold heuristic based on the total number of initial coins. */
   def totalCoinsThreshold(totalCoins: Int): Threshold =
