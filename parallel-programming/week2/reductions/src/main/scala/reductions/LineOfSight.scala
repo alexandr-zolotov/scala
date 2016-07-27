@@ -33,8 +33,21 @@ object LineOfSight {
 
   def max(a: Float, b: Float): Float = if (a > b) a else b
 
+  /**
+    * For each node except the first one (observer position) calculates min angle tangents where it still can be seen
+    * @param input - heights of nodes
+    * @param output - corresponding tan(angle)
+    */
   def lineOfSight(input: Array[Float], output: Array[Float]): Unit = {
-    ???
+
+    def angle(nodeNumber: Int, height: Float) = height / nodeNumber
+    var maxTillNow = 0.0F
+
+    for (pointNumber <- input.indices.drop(1)) {
+      val height = input(pointNumber)
+      maxTillNow = math.max(maxTillNow, angle(pointNumber, height))
+      output(pointNumber) = maxTillNow
+    }
   }
 
   sealed abstract class Tree {
