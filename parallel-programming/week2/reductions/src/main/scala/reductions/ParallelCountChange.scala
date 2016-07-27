@@ -75,15 +75,20 @@ object ParallelCountChange {
 
     def countParallel(leftMoney: Int, sortedCoins: List[Int]): Int = {
 
-      if (threshold(leftMoney, sortedCoins)) count(leftMoney, sortedCoins)
-      else if (sortedCoins.isEmpty) 0
+      if (leftMoney == 0) 1
+      else if (leftMoney < 0) 0
       else {
-        val coin: Int = sortedCoins.head
-        val (currentMoneyBiggerCoins, currentMoneyReducedCurrentCoin) =
-          parallel(countParallel(leftMoney, sortedCoins.tail), countParallel(leftMoney - coin, sortedCoins))
 
-        if (sortedCoins.tail.isEmpty) currentMoneyReducedCurrentCoin
-        else currentMoneyReducedCurrentCoin + currentMoneyBiggerCoins
+        if (threshold(leftMoney, sortedCoins)) count(leftMoney, sortedCoins)
+        else if (sortedCoins.isEmpty) 0
+        else {
+          val coin: Int = sortedCoins.head
+          val (currentMoneyBiggerCoins, currentMoneyReducedCurrentCoin) =
+            parallel(countParallel(leftMoney, sortedCoins.tail), countParallel(leftMoney - coin, sortedCoins))
+
+          if (sortedCoins.tail.isEmpty) currentMoneyReducedCurrentCoin
+          else currentMoneyReducedCurrentCoin + currentMoneyBiggerCoins
+        }
       }
     }
     countParallel(money, sortedCoins)
@@ -91,15 +96,15 @@ object ParallelCountChange {
 
   /** Threshold heuristic based on the starting money. */
   def moneyThreshold(startingMoney: Int): Threshold =
-    (money: Int, coins: List[Int]) => money < ((startingMoney * 2) / 3)
+    (money: Int, coins: List[Int]) => money <= ((startingMoney * 2) / 3)
 
   /** Threshold heuristic based on the total number of initial coins. */
   def totalCoinsThreshold(totalCoins: Int): Threshold =
-    ???
+    (money: Int, coins: List[Int]) => coins.size <= ((totalCoins * 2) / 3)
 
 
   /** Threshold heuristic based on the starting money and the initial list of coins. */
   def combinedThreshold(startingMoney: Int, allCoins: List[Int]): Threshold = {
-    ???
+    (money: Int, coins: List[Int]) => money * coins.size <= (startingMoney * allCoins.size) / 2
   }
 }
