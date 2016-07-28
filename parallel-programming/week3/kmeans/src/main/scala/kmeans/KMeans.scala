@@ -73,14 +73,17 @@ class KMeans {
   }
 
   def converged(eta: Double)(oldMeans: GenSeq[Point], newMeans: GenSeq[Point]): Boolean = {
-    oldMeans.zip(newMeans).exists(pair => pair._1.squareDistance(pair._2) > eta)
+    for (i <- 0 until oldMeans.length){
+      if(oldMeans(i).squareDistance(newMeans(i))> eta) false
+    }
+    true
   }
 
-  @tailrec
+  @tailrec//fixme
   final def kMeans(points: GenSeq[Point], means: GenSeq[Point], eta: Double): GenSeq[Point] = {
     val newMeans = update(classify(points, means), means)
     val alreadyConverged = converged(eta)(means, newMeans)
-    if (!alreadyConverged) kMeans(points, newMeans, eta) else means
+    if (!alreadyConverged) kMeans(points, newMeans, eta) else newMeans
   }
 }
 
