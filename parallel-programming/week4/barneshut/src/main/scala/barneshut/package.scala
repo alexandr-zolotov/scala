@@ -23,6 +23,10 @@ package object barneshut {
     def centerY = minY + height / 2
 
     override def toString = s"Boundaries($minX, $minY, $maxX, $maxY)"
+
+    def contain(x: Float, y: Float): Boolean = {
+      (x <= maxX) && (x >= minX) && (y <= maxY) && (y >= minY)
+    }
   }
 
   sealed abstract class Quad {
@@ -183,7 +187,13 @@ package object barneshut {
     for (i <- 0 until matrix.length) matrix(i) = new ConcBuffer
 
     def +=(b: Body): SectorMatrix = {
-      ???
+
+      if(boundaries.contain(b.x, b.y)){
+        val xSectorNumber = math.floor(b.x / sectorSize).toInt
+        val ySectorNumber = math.floor(b.y / sectorSize).toInt
+        val index: Int = ySectorNumber * sectorPrecision + xSectorNumber
+        matrix.apply(index).+=(b)
+      }
       this
     }
 
