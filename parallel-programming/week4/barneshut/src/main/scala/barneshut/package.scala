@@ -183,24 +183,57 @@ package object barneshut {
 
   class SectorMatrix(val boundaries: Boundaries, val sectorPrecision: Int) {
     val sectorSize = boundaries.size / sectorPrecision
-    val matrix = new Array[ConcBuffer[Body]](sectorPrecision * sectorPrecision)
+    val xSectorsCount = ((boundaries.maxX - boundaries.minX) / sectorPrecision).toInt
+    val ySectorsCount = ((boundaries.maxY - boundaries.minY) / sectorPrecision).toInt
+    val matrix:Array[ConcBuffer[Body]] = new Array[ConcBuffer[Body]](sectorPrecision * sectorPrecision)
     for (i <- 0 until matrix.length) matrix(i) = new ConcBuffer
 
-    def +=(b: Body): SectorMatrix = {
+    def consIndex(xIndex: Int, yIndex: Int): Int = yIndex * sectorPrecision + xIndex
 
-      if(boundaries.contain(b.x, b.y)){
-        val xSectorNumber = math.floor(b.x / sectorSize).toInt
-        val ySectorNumber = math.floor(b.y / sectorSize).toInt
-        val index: Int = ySectorNumber * sectorPrecision + xSectorNumber
-        matrix.apply(index).+=(b)
+    def closestSector(b: Body): (Int, Int) = { //todo test
+
+      val xSectorNumberInInfinity = math.floor((b.x - boundaries.minX) / sectorSize).toInt
+      val ySectorNumberInInfinity = math.floor((b.y - boundaries.minY) / sectorSize).toInt
+
+      if (boundaries.contain(b.x, b.y)) (xSectorNumberInInfinity, ySectorNumberInInfinity)
+      else {
+        val xs =
+          if (xSectorNumberInInfinity > xSectorsCount) xSectorsCount
+          else if (xSectorNumberInInfinity < 0) 0
+          else xSectorNumberInInfinity
+
+        val ys = if (ySectorNumberInInfinity > ySectorsCount) ySectorsCount
+        else if (ySectorNumberInInfinity < 0) 0
+        else ySectorNumberInInfinity
+
+        (xs, ys)
       }
+    }
+
+    def +=(b: Body): SectorMatrix = {
+      val (xSectorNumber, ySectorNumber) = closestSector(b)
+      val index = consIndex(xSectorNumber, ySectorNumber)
+      matrix.apply(index).+=(b)
       this
     }
 
     def apply(x: Int, y: Int) = matrix(y * sectorPrecision + x)
 
     def combine(that: SectorMatrix): SectorMatrix = {
-      ???
+
+      def combineBuffers (buffer1: ConcBuffer[Body], buffer2: ConcBuffer[Body]): ConcBuffer[Body] = {
+        buffer1.combine(buffer2)
+      }
+
+      matrix.zip(that.matrix).zipWithIndex.foreach(pair =>
+        task({
+          val cb1 = pair._1._1
+          val cb2 = pair._1._2
+          val idx = pair._2
+          matrix(idx) = combineBuffers(cb1, cb2)
+        })
+          .join())
+      this
     }
 
     def toQuad(parallelism: Int): Quad = {
