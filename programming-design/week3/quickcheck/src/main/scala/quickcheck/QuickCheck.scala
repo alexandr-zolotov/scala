@@ -29,11 +29,6 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
     else deleteAll(deleteMin(heap))
   }
 
-  property("gen1") = forAll { (h: H) =>
-    val m = if (isEmpty(h)) 0 else findMin(h)
-    findMin(insert(m, h)) == m
-  }
-
   property("findMin returns the only value in queue") = forAll {
     (h: H) => {
       val emptyHeap: H = deleteAll(h)
@@ -52,6 +47,12 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
     (h: H) => {
       val prevMin = findMin(h)
       findMin(deleteMin(insert(Int.MinValue, h))) == prevMin
+    }
+  }
+
+  property("deleteMin deletes only one item from the queue") = forAll {
+    (h: H) => {
+      findMin(deleteMin(insert(Int.MinValue + 2, insert(Int.MinValue + 1, h)))) == Int.MinValue + 2
     }
   }
 
@@ -96,6 +97,13 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
       val nonEmpty = insert(Int.MinValue, empty)
 
       isEmpty(deleteMin(deleteMin(meld(nonEmpty, other))))
+    }
+  }
+
+  property("insert should insert only one element") = forAll {
+    (h: H) => {
+      val empty = deleteAll(h)
+      isEmpty(deleteMin(insert(0, empty)))
     }
   }
 
