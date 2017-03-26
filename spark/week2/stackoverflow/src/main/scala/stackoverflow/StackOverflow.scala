@@ -310,7 +310,7 @@ class StackOverflow extends Serializable {
 
       val dominantLanguagePostsCount: (Int, Int) = vectors.groupBy(_._1).map(lang => (lang._1, lang._2.size)).maxBy(_._2)
       val dominantLangIndex: Int = dominantLanguagePostsCount._1
-      val langLabel: String = langs(dominantLangIndex)
+      val langLabel: String = langs(dominantLangIndex / langSpread)
         //??? // most common language in the cluster
 
       val size = vectors.size
