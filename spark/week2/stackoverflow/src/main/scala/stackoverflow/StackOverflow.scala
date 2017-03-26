@@ -130,7 +130,7 @@ class StackOverflow extends Serializable {
       .map(post => (firstLangInTag(post._1.tags, langs), post._2))
       .filter(_._1.isDefined)
       .map(present => (present._1.get, present._2))
-
+    //languageIndex, postScore
     someResults
   }
 
@@ -187,6 +187,24 @@ class StackOverflow extends Serializable {
   /** Main kmeans computation */
   @tailrec final def kmeans(means: Array[(Int, Int)], vectors: RDD[(Int, Int)], iter: Int = 1, debug: Boolean = false): Array[(Int, Int)] = {
     val newMeans = means.clone() // you need to compute newMeans
+
+    val clusters: RDD[(Int, Iterable[(Int, (Int, Int))])] = vectors
+      .map(vector => (findClosest(vector, means), vector))
+      .groupBy(_._1)
+      .cache()
+
+    //fixme
+    val updatedMeans: Iterable[(Int, (Int, Int))] = clusters
+        .mapValues(cluster => {
+          val clusterSize = cluster.size
+          val aAvg:Int = cluster.map(_._2._1).sum /clusterSize
+          val bAvg:Int = cluster.map(_._2._2).sum /clusterSize
+          (aAvg, bAvg)
+        }).collect()
+
+    updatedMeans.foreach(update => {
+      newMeans.update(update._1, update._2)
+    })
 
     // TODO: Fill in the newMeans array
     val distance = euclideanDistance(means, newMeans)
