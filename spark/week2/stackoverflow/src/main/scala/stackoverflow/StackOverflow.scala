@@ -132,7 +132,7 @@ class StackOverflow extends Serializable {
     val someResults: RDD[(Int, Int)] = scored
       .map(post => (firstLangInTag(post._1.tags, langs), post._2))
       .filter(_._1.isDefined)
-      .map(present => (present._1.get, present._2))
+      .map(present => (present._1.get * langSpread, present._2))
     //languageIndex, postScore
     someResults.cache()
     someResults
@@ -197,7 +197,6 @@ class StackOverflow extends Serializable {
       .groupBy(_._1)
       .cache()
 
-    //fixme
     val updatedMeans: Iterable[(Int, (Int, Int))] = clusters
         .mapValues(cluster => {
           val clusterSize = cluster.size
@@ -210,7 +209,6 @@ class StackOverflow extends Serializable {
       newMeans.update(update._1, update._2)
     })
 
-    // TODO: Fill in the newMeans array
     val distance = euclideanDistance(means, newMeans)
 
     if (debug) {
@@ -307,12 +305,19 @@ class StackOverflow extends Serializable {
   def clusterResults(means: Array[(Int, Int)], vectors: RDD[(Int, Int)]): Array[(String, Double, Int, Int)] = {
     val closest = vectors.map(p => (findClosest(p, means), p))
     val closestGrouped = closest.groupByKey()
+    closestGrouped.cache()
+    val median = closestGrouped.mapValues { vectors =>
 
-    val median = closestGrouped.mapValues { vs =>
-      val langLabel: String   = ??? // most common language in the cluster
-      val langPercent: Double = ??? // percent of the questions in the most common language
-      val clusterSize: Int    = ???
-      val medianScore: Int    = ???
+      val dominantLanguagePostsCount: (Int, Int) = vectors.groupBy(_._1).map(lang => (lang._1, lang._2.size)).maxBy(_._2)
+      val dominantLangIndex: Int = dominantLanguagePostsCount._1
+      val langLabel: String = langs(dominantLangIndex)
+        //??? // most common language in the cluster
+
+      val size = vectors.size
+      val langPercent: Double = dominantLanguagePostsCount._2.asInstanceOf[Double] / size * 100 // percent of the questions in the most common language
+      val clusterSize: Int    = size
+
+      val medianScore: Int    = vectors.map(_._2).toList.sorted.drop(size/2).head
 
       (langLabel, langPercent, clusterSize, medianScore)
     }
