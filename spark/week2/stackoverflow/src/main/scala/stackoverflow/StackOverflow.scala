@@ -192,18 +192,13 @@ class StackOverflow extends Serializable {
   @tailrec final def kmeans(means: Array[(Int, Int)], vectors: RDD[(Int, Int)], iter: Int = 1, debug: Boolean = false): Array[(Int, Int)] = {
     val newMeans = means.clone() // you need to compute newMeans
 
-    val clusters: RDD[(Int, Iterable[(Int, (Int, Int))])] = vectors
+    val clusters: RDD[(Int, Iterable[(Int, Int)])] = vectors
       .map(vector => (findClosest(vector, means), vector))
       .groupBy(_._1)
+      .mapValues(dirt => dirt.map(_._2))
       .cache()
 
-    val updatedMeans: Iterable[(Int, (Int, Int))] = clusters
-        .mapValues(cluster => {
-          val clusterSize = cluster.size
-          val aAvg:Int = cluster.map(_._2._1).sum /clusterSize
-          val bAvg:Int = cluster.map(_._2._2).sum /clusterSize
-          (aAvg, bAvg)
-        }).collect()
+    val updatedMeans: Iterable[(Int, (Int, Int))] = clusters.mapValues(averageVectors).collect()
 
     updatedMeans.foreach(update => {
       newMeans.update(update._1, update._2)
