@@ -62,15 +62,22 @@ object TimeUsage {
     *         have type Double. None of the fields are nullable.
     * @param columnNames Column names of the DataFrame
     */
-  def dfSchema(columnNames: List[String]): StructType =
-    ???
+  def dfSchema(columnNames: List[String]): StructType = {
+    val firstField: StructField = columnNames.take(1).map(StructField(_, DataTypes.StringType, nullable = false)).head
+    val rest: List[StructField] = columnNames.drop(1).map(StructField(_, DataTypes.DoubleType, nullable = false))
+    StructType(firstField +: rest)
+  }
 
 
   /** @return An RDD Row compatible with the schema produced by `dfSchema`
     * @param line Raw fields
     */
-  def row(line: List[String]): Row =
-    ???
+  def row(line: List[String]): Row = {
+    Row(line)
+  }
+
+
+
 
   /** @return The initial data frame columns partitioned in three groups: primary needs (sleeping, eating, etc.),
     *         work and other (leisure activities)
@@ -88,7 +95,27 @@ object TimeUsage {
     *    “t10”, “t12”, “t13”, “t14”, “t15”, “t16” and “t18” (those which are not part of the previous groups only).
     */
   def classifiedColumns(columnNames: List[String]): (List[Column], List[Column], List[Column]) = {
-    ???
+
+    val primaryActivities : Set[String] = Set("t01", "t03", "t11", "t1891", "t1803")
+    val workingActivities : Set[String] = Set("t05", "t1805")
+    val otherActivities : Set[String] = Set("t02", "t04", "t06", "t07", "t08", "t09", "t10", "t12", "t13", "t14", "t15", "t16", "t18")
+
+    val allSupportedActivities: Set[String] = primaryActivities ++ workingActivities ++ otherActivities
+
+    def keyMapper (input: (String, Column)): String = {
+      val name = input._1
+      if (primaryActivities.contains(name)) "primary"
+      else if (workingActivities.contains(name)) "working"
+      else "other"
+    }
+
+    val groupedActivities: Map[String, List[Column]] = columnNames
+      .filter(allSupportedActivities.contains)
+      .map(name => (name, new Column(name)))
+      .groupBy(keyMapper)
+      .mapValues(group => group.map(_._2))
+
+    (groupedActivities("primary"), groupedActivities("working"), groupedActivities("other"))
   }
 
   /** @return a projection of the initial DataFrame such that all columns containing hours spent on primary needs
