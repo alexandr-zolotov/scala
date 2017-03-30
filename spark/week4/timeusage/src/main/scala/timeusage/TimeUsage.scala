@@ -3,6 +3,7 @@ package timeusage
 import java.nio.file.Paths
 
 import org.apache.spark.sql._
+import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.types._
 
 /** Main class */
@@ -154,13 +155,23 @@ object TimeUsage {
     otherColumns: List[Column],
     df: DataFrame
   ): DataFrame = {
-    val workingStatusProjection: Column = ???
-    val sexProjection: Column = ???
-    val ageProjection: Column = ???
 
-    val primaryNeedsProjection: Column = ???
-    val workProjection: Column = ???
-    val otherProjection: Column = ???
+    val workingStatusTransformation: UserDefinedFunction = udf((code:Int) => if (code < 3 && code >=1) "working" else "not working")
+    val sexTransformation: UserDefinedFunction = udf((code:Int) => if(code == 1) "male" else "female")
+    val ageTransformation: UserDefinedFunction = udf((age: Int) => if(age >= 15 && age <=22) "young" else if (age <= 55) "active" else "elder")
+
+    val projections: DataFrame = df.withColumn("working", workingStatusTransformation($"telfs"))
+      .withColumn("sex", sexTransformation($"tesex"))
+      .withColumn("age", ageTransformation($"teage"))
+
+    val workingStatusProjection: Column = projections("working")
+    val sexProjection: Column = projections("sex")
+    val ageProjection: Column = projections("age")
+
+
+    val primaryNeedsProjection: Column = primaryNeedsColumns.map(primaryNeedColumn => sum(primaryNeedColumn)).sum
+    val workProjection: Column = workColumns.map(workColumn => sum(workColumn)).sum
+    val otherProjection: Column = workColumns.map(workColumn => sum(workColumn)).sum
     df
       .select(workingStatusProjection, sexProjection, ageProjection, primaryNeedsProjection, workProjection, otherProjection)
       .where($"telfs" <= 4) // Discard people who are not in labor force
