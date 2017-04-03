@@ -1,5 +1,6 @@
 package timeusage
 
+import java.lang.Double
 import java.nio.file.Paths
 
 import org.apache.spark.sql._
@@ -49,6 +50,8 @@ object TimeUsage {
         .map(_.split(",").to[List])
         .map(row)
 
+    data.cache()
+
     val dataFrame =
       spark.createDataFrame(data, schema)
 
@@ -74,7 +77,7 @@ object TimeUsage {
     * @param line Raw fields
     */
   def row(line: List[String]): Row = {
-    Row(line)
+    Row.fromSeq(line.head +: line.tail.map(string => Double.parseDouble(string)))
   }
 
 
@@ -101,17 +104,16 @@ object TimeUsage {
     val workingActivities : Set[String] = Set("t05", "t1805")
     val otherActivities : Set[String] = Set("t02", "t04", "t06", "t07", "t08", "t09", "t10", "t12", "t13", "t14", "t15", "t16", "t18")
 
-    val allSupportedActivities: Set[String] = primaryActivities ++ workingActivities ++ otherActivities
 
     def keyMapper (input: (String, Column)): String = {
       val name = input._1
-      if (primaryActivities.contains(name)) "primary"
-      else if (workingActivities.contains(name)) "working"
-      else "other"
+      if (primaryActivities.exists(prefix => name.startsWith(prefix))) "primary"
+      else if (workingActivities.exists(prefix => name.startsWith(prefix))) "working"
+      else if (otherActivities.exists(prefix => name.startsWith(prefix))) "other"
+      else "irrelevant"
     }
 
     val groupedActivities: Map[String, List[Column]] = columnNames
-      .filter(allSupportedActivities.contains)
       .map(name => (name, new Column(name)))
       .groupBy(keyMapper)
       .mapValues(group => group.map(_._2))
@@ -156,22 +158,24 @@ object TimeUsage {
     df: DataFrame
   ): DataFrame = {
 
-    val workingStatusTransformation: UserDefinedFunction = udf((code:Int) => if (code < 3 && code >=1) "working" else "not working")
-    val sexTransformation: UserDefinedFunction = udf((code:Int) => if(code == 1) "male" else "female")
-    val ageTransformation: UserDefinedFunction = udf((age: Int) => if(age >= 15 && age <=22) "young" else if (age <= 55) "active" else "elder")
 
-    val projections: DataFrame = df.withColumn("working", workingStatusTransformation($"telfs"))
-      .withColumn("sex", sexTransformation($"tesex"))
-      .withColumn("age", ageTransformation($"teage"))
+    val workingStatusProjection: Column = when(df("telfs") >= 1 && df("telfs") < 3, "working")
+      .otherwise("not working")
+      .name("working")
 
-    val workingStatusProjection: Column = projections("working")
-    val sexProjection: Column = projections("sex")
-    val ageProjection: Column = projections("age")
+    val sexProjection: Column = when(df("tesex") === 1, "male")
+      .otherwise("female")
+      .name("sex")
 
+    val ageProjection: Column = when(df("teage") >= 15 && df("teage") <= 22, "young")
+      .when(df("teage") > 22 && df("teage") <= 55, "active")
+      .otherwise("elder")
+      .name("age")
 
-    val primaryNeedsProjection: Column = primaryNeedsColumns.map(primaryNeedColumn => sum(primaryNeedColumn)).sum
-    val workProjection: Column = workColumns.map(workColumn => sum(workColumn)).sum
-    val otherProjection: Column = workColumns.map(workColumn => sum(workColumn)).sum
+    val primaryNeedsProjection: Column = primaryNeedsColumns.reduce(_+_).divide(60).name("primaryNeeds")
+    val workProjection: Column = workColumns.reduce(_+_).divide(60).name("work")
+    val otherProjection: Column = otherColumns.reduce(_+_).divide(60).name("other")
+
     df
       .select(workingStatusProjection, sexProjection, ageProjection, primaryNeedsProjection, workProjection, otherProjection)
       .where($"telfs" <= 4) // Discard people who are not in labor force
@@ -195,7 +199,11 @@ object TimeUsage {
     * Finally, the resulting DataFrame should be sorted by working status, sex and age.
     */
   def timeUsageGrouped(summed: DataFrame): DataFrame = {
-    ???
+    summed.cache()
+    summed
+      .groupBy($"working", $"sex", $"age")
+      .agg(round(avg($"primaryNeeds"),1).name("primaryNeeds"), round(avg($"work"),1).name("work"), round(avg($"other"),1).name("other"))
+      .sort($"working", $"sex", $"age")
   }
 
   /**
@@ -211,8 +219,9 @@ object TimeUsage {
   /** @return SQL query equivalent to the transformation implemented in `timeUsageGrouped`
     * @param viewName Name of the SQL view to use
     */
-  def timeUsageGroupedSqlQuery(viewName: String): String =
-    ???
+  def timeUsageGroupedSqlQuery(viewName: String): String = {
+    "select working, sex, age, avg(primaryNeeds) as primaryNeeds, avg(work) as work, avg(other) as other from $viewName group by working, sex, age"
+  }
 
   /**
     * @return A `Dataset[TimeUsageRow]` from the “untyped” `DataFrame`
@@ -221,8 +230,11 @@ object TimeUsage {
     * Hint: you should use the `getAs` method of `Row` to look up columns and
     * cast them at the same time.
     */
-  def timeUsageSummaryTyped(timeUsageSummaryDf: DataFrame): Dataset[TimeUsageRow] =
-    ???
+  def timeUsageSummaryTyped(timeUsageSummaryDf: DataFrame): Dataset[TimeUsageRow] = {
+    timeUsageSummaryDf.map(row => {
+      TimeUsageRow(row(0).asInstanceOf[String], row(1).asInstanceOf[String], row(2).asInstanceOf[String], row(3).asInstanceOf[Double], row(4).asInstanceOf[Double], row(5).asInstanceOf[Double])
+    })
+  }
 
   /**
     * @return Same as `timeUsageGrouped`, but using the typed API when possible
@@ -237,7 +249,25 @@ object TimeUsage {
     */
   def timeUsageGroupedTyped(summed: Dataset[TimeUsageRow]): Dataset[TimeUsageRow] = {
     import org.apache.spark.sql.expressions.scalalang.typed
-    ???
+
+    /*
+        summed.cache()
+    summed
+      .groupBy($"working", $"sex", $"age")
+      .agg(round(avg($"primaryNeeds")), round(avg($"work")), round(avg($"other")))
+     */
+
+    def fm(row:((String, String, String), Double, Double, Double)): TimeUsageRow = {
+      TimeUsageRow(row._1._1, row._1._2, row._1._3, row._2, row._3, row._4)
+    }
+
+    val agg: Dataset[((String, String, String), Double, Double, Double)] = summed.groupByKey(timeUsageRow => (timeUsageRow.working, timeUsageRow.sex, timeUsageRow.age))
+      .agg(
+        round(avg("primaryNeeds"), 1).as(Encoders.DOUBLE),
+        round(avg("work"), 1).as(Encoders.DOUBLE),
+        round(avg("other"), 1).as(Encoders.DOUBLE)
+      )
+    agg.map(fm)
   }
 }
 
