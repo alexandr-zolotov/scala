@@ -100,7 +100,7 @@ object TimeUsage {
     */
   def classifiedColumns(columnNames: List[String]): (List[Column], List[Column], List[Column]) = {
 
-    val primaryActivities : Set[String] = Set("t01", "t03", "t11", "t1891", "t1803")
+    val primaryActivities : Set[String] = Set("t01", "t03", "t11", "t1801", "t1803")
     val workingActivities : Set[String] = Set("t05", "t1805")
     val otherActivities : Set[String] = Set("t02", "t04", "t06", "t07", "t08", "t09", "t10", "t12", "t13", "t14", "t15", "t16", "t18")
 
@@ -220,7 +220,7 @@ object TimeUsage {
     * @param viewName Name of the SQL view to use
     */
   def timeUsageGroupedSqlQuery(viewName: String): String = {
-    "select working, sex, age, avg(primaryNeeds) as primaryNeeds, avg(work) as work, avg(other) as other from $viewName group by working, sex, age"
+    s"select working, sex, age, avg(primaryNeeds) as primaryNeeds, avg(work) as work, avg(other) as other from $viewName group by working, sex, age"
   }
 
   /**
